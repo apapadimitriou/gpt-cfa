@@ -13,7 +13,7 @@ from tqdm import tqdm
 # ------------------------------------------------------------------------------
 argparser = argparse.ArgumentParser()
 argparser.add_argument("-f", "--file", type=str, required=True)
-argparser.add_argument("-m", "--model", type=str, default="gpt-3.5-turbo-0613")
+argparser.add_argument("-m", "--model", type=str, default="gpt-4-0613")
 argparser.add_argument("-t", "--temp", type=float, default=0.0)
 args = argparser.parse_args()
 model = args.model
@@ -43,7 +43,8 @@ Finally, indicate the correct answer
 
 
 def ask_gpt(question):
-    while True:
+    out = None
+    for _ in range(3):
         try:
             res = openai.ChatCompletion.create(
                 model=model,
@@ -79,12 +80,15 @@ def ask_gpt(question):
                 ],
                 function_call={"name": "answer_question"},
             )
-        except:
+            ans = res.choices[0].message.to_dict()["function_call"]["arguments"]  # type: ignore
+            out = json.loads(ans)
+            return out
+        except Exception as e:
+            print(e)
             time.sleep(3)
             continue
-        ans = res.choices[0].message.to_dict()["function_call"]["arguments"]  # type: ignore
-        out = json.loads(ans)
-        return out
+
+    return {"thinking": ["failed to get response"], "answer": "N"}
 
 
 exam = pd.read_csv(args.file, sep=";;", engine="python")
@@ -105,4 +109,4 @@ for i, row in tqdm(exam.iterrows(), total=len(exam)):
 
 print(f"Score: {correct}/{len(exam)} {correct/len(exam)}%")
 
-exam.to_csv("chatgpt.csv", index=False)
+exam.to_csv("gpt4.csv", index=False)
